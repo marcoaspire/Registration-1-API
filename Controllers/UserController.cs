@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RegistrationAPI.Models;
@@ -108,10 +109,6 @@ namespace RegistrationAPI.Controllers
 
         }
 
-        //new user
-        // POST api/<AuthController>/new
-        [Route("new")]
-
         [HttpPost]
         public ActionResult Post(User user)
         {
@@ -219,6 +216,43 @@ namespace RegistrationAPI.Controllers
             return Ok(new { results = user, msg = "user updated" });
         }
 
+        [HttpPatch("{id}")]
+        /*
+         * Operations
+         * add	Add a property or array element. For existing property: set value.
+            remove	Remove a property or array element.
+            replace	Same as remove followed by add at same location.
+            move	Same as remove from source followed by add to destination using value from source.
+            copy	Same as add to destination using value from source.
+            test	Return success status code if value at path = provided value.
+         * 
+         * [
+              {
+                "path": "last4DigitsSSN",
+                "op": "replace",
+                "value": 4123 
+              },
+              {
+                "path": "termsandConditions",
+                "op": "replace",
+                "value": true
+              }
+            ]
+         * 
+         */
+        public async Task<IActionResult> PatchUser(int id, JsonPatchDocument userModel)
+        {
+            var userDB = _context.Users.Find(id);
+            if (userDB != null)
+            {
+                userModel.ApplyTo(userDB);
+                await _context.SaveChangesAsync();
+                return Ok(new { results = userDB, msg = "user updated patch" });
+
+            }
+            return NotFound();
+        }
+
         // DELETE: api/PaymentDetail/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(int id)
@@ -244,53 +278,6 @@ namespace RegistrationAPI.Controllers
         }
 
 
-        [HttpPost]
-        //Authenticate
-        public ActionResult PostLogin(LoginViewModel u)
-        {
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    var passwordHash = Crypto.HashPassword(u.Password);
-
-                    var userLog = _context.Users.SingleOrDefault(user => user.EmailAddress == u.EmailAddress);
-
-                    
-
-                    if (userLog == null)
-                    {
-                        //Debug.WriteLine(Crypto.HashPassword(u.Password));
-                        return Ok(new { ok = false, msg = "Password invalid" });
-                    }
-                    else
-                    {
-                        var validate = Crypto.VerifyHashedPassword(userLog.Password, u.Password);
-
-
-                        //var userLog = _context.Users.SingleOrDefault(user => user.Email == u.Email && user.Password == u.Password );
-                        if (!validate)
-                        {
-                            return Ok(new { ok = false, msg = "Password invalid" });
-
-                        }
-
-                        return Ok(new { ok = true, id = userLog.UserID});
-
-                    }
-
-
-                }
-                catch (Exception)
-                {
-                    return Ok(new { ok = false, msg = "Invalid credentials" });
-
-                }
-
-            }
-
-            return Ok(new { msg = "Error" });
-        }
 
 
 
